@@ -77,6 +77,38 @@ def _on_session_start(**_payload: Any) -> None:
     return None
 
 
+def _install_registry_hook() -> bool:
+    """Patch the actual adapter class when the gateway creates the WhatsApp adapter.
+
+    The bundled platform plugin is loaded through the synthetic
+    ``hermes_plugins.platforms__whatsapp`` namespace, which is a different module
+    object from ``plugins.platforms.whatsapp``. Patching the import by dotted path
+    can therefore miss the class the gateway actually instantiates. Wrapping the
+    platform registry hook is alias-safe.
+    """
+    try:
+        from gateway.platform_registry import PlatformRegistry
+    except Exception:
+        logger.exception("whatsapp-observed-context: cannot import platform registry")
+        return False
+
+    if getattr(PlatformRegistry, "_hermes_whatsapp_observed_registry_hook", False):
+        return True
+
+    original_create_adapter = PlatformRegistry.create_adapter
+
+    def create_adapter(self, name, config):
+        adapter = original_create_adapter(self, name, config)
+        if str(name).strip().lower() == "whatsapp" and adapter is not None:
+            install_adapter_patch(type(adapter), _store_factory, log=logger)
+        return adapter
+
+    PlatformRegistry.create_adapter = create_adapter
+    PlatformRegistry._hermes_whatsapp_observed_registry_hook = True
+    logger.info("whatsapp-observed-context: registry hook installed; adapter will be patched on creation")
+    return True
+
+
 def register(ctx: Any) -> None:
     """Hermes plugin entry point."""
     try:
@@ -91,16 +123,7 @@ def register(ctx: Any) -> None:
         )
         return
 
-    try:
-        from plugins.platforms.whatsapp.adapter import WhatsAppAdapter
-    except Exception:
-        logger.exception(
-            "whatsapp-observed-context: cannot import the WhatsApp adapter; "
-            "the plugin will not observe group context"
-        )
-        return
-
-    installed = install_adapter_patch(WhatsAppAdapter, _store_factory, log=logger)
+    installed = _install_registry_hook()
     if installed:
         logger.info(
             "whatsapp-observed-context: buffering unmentioned group messages "
