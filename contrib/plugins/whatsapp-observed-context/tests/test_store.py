@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from store import ObservedContextStore  # noqa: E402
 
-GROUP = "120363425536246157@g.us"
+GROUP = "120363000000000000@g.us"
 
 
 class StoreTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class StoreTests(unittest.TestCase):
                 "messageId": message_id or f"m{ts}",
                 "timestamp": ts,
                 "senderName": extra.pop("senderName", "Alice"),
-                "senderId": "6588684299@s.whatsapp.net",
+                "senderId": "15551234567@s.whatsapp.net",
                 "body": body,
                 **extra,
             },
