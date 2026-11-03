@@ -1,0 +1,25 @@
+name: whatsapp-observed-context
+label: WhatsApp Observed Group Context
+kind: standalone
+version: 0.1.0
+description: >
+  Buffer unmentioned WhatsApp group messages and attach them as observed
+  context when the bot is mentioned. Mention-only replies are unchanged.
+author: Mohan Krishnan
+optional_env:
+  - name: WHATSAPP_OBSERVE_UNMENTIONED_GROUP_MESSAGES
+    description: "Buffer unmentioned group messages as observed context (true/false)"
+    prompt: "Buffer unmentioned group messages?"
+    password: false
+  - name: WHATSAPP_OBSERVE_MAX_MESSAGES
+    description: "Maximum retained/injected messages per group (default 100)"
+    prompt: "Max observed messages"
+    password: false
+  - name: WHATSAPP_OBSERVE_MAX_CHARS
+    description: "Maximum characters injected per mention (default 12000)"
+    prompt: "Max observed context characters"
+    password: false
+  - name: WHATSAPP_OBSERVE_TTL_HOURS
+    description: "Drop observed messages older than this many hours (default 24)"
+    prompt: "Observed context TTL hours"
+    password: false
