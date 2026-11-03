@@ -16,8 +16,9 @@ class StoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.now = 2_000.0
+        self.db_path = Path(self.tmp.name) / "context.sqlite3"
         self.store = ObservedContextStore(
-            Path(self.tmp.name) / "context.sqlite3",
+            self.db_path,
             max_messages=100,
             max_chars=12_000,
             ttl_hours=24,
@@ -54,6 +55,27 @@ class StoreTests(unittest.TestCase):
         second = self.store.render(GROUP)
         self.assertIn("Alice: three", second)
         self.assertNotIn("Alice: one", second)
+
+    def test_persistence_across_store_reopen(self):
+        self.add(1_000.0, "one")
+        self.add(1_001.0, "two")
+        first = self.store.render(GROUP)
+        self.assertIn("Alice: one", first)
+        self.store.close()
+
+        self.store = ObservedContextStore(
+            self.db_path,
+            max_messages=100,
+            max_chars=12_000,
+            ttl_hours=24,
+            timezone_name="UTC",
+            now_fn=lambda: self.now,
+        )
+        self.add(1_002.0, "three")
+        text = self.store.render(GROUP)
+        self.assertIn("Alice: three", text)
+        self.assertNotIn("Alice: one", text)
+        self.assertNotIn("Alice: two", text)
 
     def test_max_messages_keeps_newest(self):
         for i in range(5):
