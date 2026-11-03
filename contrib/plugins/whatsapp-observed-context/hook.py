@@ -12,6 +12,44 @@ from typing import Any, Callable, Optional
 logger = logging.getLogger("plugins.whatsapp_observed_context.hook")
 
 _PATCH_MARKER = "_hermes_whatsapp_observed_context_patched"
+_REGISTRY_MARKER = "_hermes_whatsapp_observed_registry_patched"
+
+
+def install_registry_patch(
+    registry_cls: type,
+    store_factory: Callable[[Any], Any],
+    *,
+    log: Optional[logging.Logger] = None,
+) -> bool:
+    """Patch the adapter class the registry actually creates.
+
+    The bundled WhatsApp platform is imported under a synthetic
+    ``hermes_plugins.platforms__whatsapp`` namespace. Importing
+    ``plugins.platforms.whatsapp`` from a user plugin can therefore yield a
+    different class object. Wrapping the registry's factory is alias-safe.
+    """
+    log = log or logger
+    if getattr(registry_cls, _REGISTRY_MARKER, False):
+        return True
+    original = getattr(registry_cls, "create_adapter", None)
+    if original is None or not callable(original):
+        log.warning(
+            "whatsapp-observed-context: registry has no create_adapter; "
+            "observed group context is disabled"
+        )
+        return False
+
+    def create_adapter(self, name, config):
+        adapter = original(self, name, config)
+        if str(name).strip().lower() == "whatsapp" and adapter is not None:
+            install_adapter_patch(type(adapter), store_factory, log=log)
+        return adapter
+
+    registry_cls.create_adapter = create_adapter
+    setattr(registry_cls, _REGISTRY_MARKER, True)
+    log.info("whatsapp-observed-context: registry hook installed")
+    return True
+
 
 
 def install_adapter_patch(

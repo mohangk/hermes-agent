@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from .hook import install_adapter_patch
+from .hook import install_adapter_patch, install_registry_patch
 from .store import ObservedContextStore
 
 logger = logging.getLogger("plugins.whatsapp_observed_context")
@@ -92,21 +92,7 @@ def _install_registry_hook() -> bool:
         logger.exception("whatsapp-observed-context: cannot import platform registry")
         return False
 
-    if getattr(PlatformRegistry, "_hermes_whatsapp_observed_registry_hook", False):
-        return True
-
-    original_create_adapter = PlatformRegistry.create_adapter
-
-    def create_adapter(self, name, config):
-        adapter = original_create_adapter(self, name, config)
-        if str(name).strip().lower() == "whatsapp" and adapter is not None:
-            install_adapter_patch(type(adapter), _store_factory, log=logger)
-        return adapter
-
-    PlatformRegistry.create_adapter = create_adapter
-    PlatformRegistry._hermes_whatsapp_observed_registry_hook = True
-    logger.info("whatsapp-observed-context: registry hook installed; adapter will be patched on creation")
-    return True
+    return install_registry_patch(PlatformRegistry, _store_factory, log=logger)
 
 
 def register(ctx: Any) -> None:
